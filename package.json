@@ -1,0 +1,55 @@
+{
+  "name": "homework-tracker",
+  "version": "1.0.0",
+  "description": "Homework tracker with reminders",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "dist": "electron-builder --linux AppImage deb",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "homepage": "https://localhost",
+  "build": {
+    "appId": "com.github.RoboWhisperer.HomeworkTracker",
+    "productName": "Homework Tracker",
+    "files": [
+      "index.html",
+      "main.js",
+      "icon.png",
+      "icon.icns",
+      "icon.ico"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "linux": {
+      "icon": "icon.png",
+      "category": "Education",
+      "synopsis": "Homework tracker with reminders",
+      "executableName": "homework-tracker",
+      "executableArgs": [
+        "--no-sandbox"
+      ]
+    },
+    "win": {
+      "icon": "icon.ico",
+      "executableName": "homework-tracker",
+      "target": "nsis"
+    },
+    "mac": {
+      "icon": "icon.icns",
+      "category": "public.app-category.education",
+      "executableName": "homework-tracker",
+      "target": "dmg"
+    }
+  },
+  "author": {
+    "name": "RoboWhisperer",
+    "email": "robo@robowhisperer.is-a.dev"
+  }
+}
