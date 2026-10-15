@@ -142,6 +142,23 @@ summary .ic{transition:transform .25s var(--glass-ease)}details[open] summary .i
 dialog[open]{animation:pop .3s var(--glass-ease)}dialog[open]::backdrop{animation:fade .3s}
 .toast{animation:slidein .35s var(--glass-ease)}.toast.out{opacity:0;transform:translateX(28px);transition:.3s}
 @media(prefers-reduced-motion:reduce){*,::before,::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
+
+/* ---- weekly class schedule ---- */
+.weekwrap{overflow-x:auto;margin-bottom:var(--s4)}
+.week{display:grid;grid-template-columns:52px repeat(7,1fr);grid-template-rows:32px repeat(14,44px);gap:1px;background:var(--glass-border);border:1px solid var(--glass-border);border-radius:var(--glass-radius);overflow:hidden;min-width:720px;width:100%}
+.weekcorner{grid-column:1;grid-row:1}
+.weekhead{grid-row:1;text-align:center;padding:var(--s1);font-size:var(--xs);color:var(--text3);display:flex;flex-direction:column;justify-content:center;align-items:center}
+.weekhead b{font-size:var(--sm);color:var(--text);font-weight:600}
+.weekhead small{font-size:10px;opacity:.7}
+.weektime{grid-column:1;display:flex;flex-direction:column;justify-content:space-between;padding:2px 0}
+.weektime span{font-size:var(--xs);color:var(--text3);text-align:right;padding-right:var(--s2)}
+.weekcal{grid-row:2/16;position:relative}
+.weekhr{position:absolute;left:0;right:0;border-top:1px dashed color-mix(in srgb,var(--glass-border) 55%,transparent);pointer-events:none}
+.weekblock{position:absolute;left:3px;right:3px;border-radius:7px;padding:3px 6px;font-size:var(--xs);cursor:pointer;overflow:hidden;box-sizing:border-box;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 26%,transparent),color-mix(in srgb,var(--c) 10%,transparent));border:1px solid color-mix(in srgb,var(--c) 45%,transparent);color:var(--text)}
+.weekblock b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.weekblock-meta{display:flex;gap:4px;font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.weekblock:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+@media(max-width:760px){.week{grid-template-columns:36px repeat(7,60px);grid-template-rows:26px repeat(14,36px)}.weekhead b{font-size:10px}.weekhead small{font-size:9px}.weektime span{font-size:9px}.weekblock{font-size:9px;padding:2px 3px}}
 </style>
 <body>
 <header class="liquid-glass" data-lg>
@@ -169,6 +186,18 @@ dialog[open]{animation:pop .3s var(--glass-ease)}dialog[open]::backdrop{animatio
   <label>Notes</label><textarea name="notes" rows="3"></textarea>
   <div class="row" style="margin-top:24px"><button type="button" class="ghost" data-act="cancel">Cancel</button><span class="sp"></span><button class="primary">Save</button></div>
 </form></dialog>
+<dialog id="cdlg" class="liquid-glass liquid-glass--modal" data-lg><form id="cf">
+  <input name="title" placeholder="Class name (optional)">
+  <div class="two">
+    <div><label>Course</label><select name="course" id="fcc"></select></div>
+    <div><label>Day</label><select name="day" id="cdays"></select></div>
+    <div><label>Start</label><input type="time" name="start"></div>
+    <div><label>End</label><input type="time" name="end"></div>
+    <div><label>Room</label><input name="room" placeholder="e.g. Room 204"></div>
+  </div>
+  <label>Notes</label><textarea name="notes" rows="2"></textarea>
+  <div class="row" style="margin-top:24px"><button type="button" class="ghost" data-act="ccancel">Cancel</button><span class="sp"></span><button type="button" class="ghost" data-act="cdel" id="cdel" style="color:var(--red);display:none">Delete</button><button class="primary">Save</button></div>
+</form></dialog>
 <script>
 const KEY='hwtracker.v1', $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -178,11 +207,11 @@ const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
 const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return fmt(d)};
 const today=()=>fmt(new Date());
 const diff=s=>Math.round((parse(s)-parse(today()))/864e5);
-const DEF={courses:[{id:'c1',name:'Math',color:'#3f5ae0'},{id:'c2',name:'English',color:'#c93a3f'},{id:'c3',name:'Science',color:'#1f8553'}],tasks:[],set:{accent:'#0c67b6',theme:'auto',sort:'due',weekStart:0,showDone:true,opacity:'80',notify:/Electron/.test(navigator.userAgent),defRemind:'60',digest:false,digestTime:'08:00'},sched:[],gen:{},fired:{}};
+const DEF={courses:[{id:'c1',name:'Math',color:'#3f5ae0'},{id:'c2',name:'English',color:'#c93a3f'},{id:'c3',name:'Science',color:'#1f8553'}],tasks:[],set:{accent:'#0c67b6',theme:'auto',sort:'due',weekStart:0,showDone:true,opacity:'80',notify:/Electron/.test(navigator.userAgent),defRemind:'60',digest:false,digestTime:'08:00'},sched:[],gen:{},fired:{},classes:[]};
 let S; try{S=JSON.parse(localStorage[KEY])}catch{} S=S||structuredClone(DEF);
-const fix=()=>{S.set={...DEF.set,...S.set};S.sched??=[];S.gen??={};S.fired??={}};fix();
+const fix=()=>{S.set={...DEF.set,...S.set};S.sched??=[];S.gen??={};S.fired??={};S.classes??=[]};fix();
 const save=()=>{try{localStorage[KEY]=JSON.stringify(S)}catch{}};
-const ui={view:'list',q:'',course:new Set(),prio:'',cal:today().slice(0,7),edit:null,anim:true,pop:null};
+const ui={view:'list',q:'',course:new Set(),prio:'',cal:today().slice(0,7),edit:null,anim:true,pop:null,clEdit:null};
 const course=id=>S.courses.find(c=>c.id===id);
 const colorOf=t=>course(t.course)?.color||'var(--text3)';
 
@@ -362,13 +391,56 @@ function setView(){
     <p class="hint">Everything is stored in this browser (localStorage). Export for backups.</p></div>`;
 }
 
+function weekDates(){
+  const ws=+S.set.weekStart,t=new Date(),td=t.getDay();
+  const s=new Date(t);s.setDate(s.getDate()-((td-ws+7)%7));
+  return [...Array(7)].map((_,i)=>{const d=new Date(s);d.setDate(d.getDate()+i);return d});
+}
+function openClass(c){
+  const t=c||{title:'',day:new Date().getDay(),start:'08:00',end:'09:00',room:'',notes:'',course:S.courses[0]?.id||''};
+  ui.clEdit=c?.id||null;const f=$('#cf');
+  $('#fcc').innerHTML='<option value="">No course</option>'+S.courses.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  $('#cdays').innerHTML=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((n,i)=>`<option value="${i}" ${t.day===i?'selected':''}>${n}</option>`).join('');
+  for(const k of ['title','course','start','end','room','notes'])f[k].value=t[k]??'';
+  $('#cdel').style.display=c?'inline-flex':'none';
+  $('#cdlg').showModal();f.title.focus();
+}
+function weekView(){
+  const dates=weekDates(),dispDays=dates.map(d=>d.getDay());
+  const minH=7,maxH=21,H=44,nH=maxH-minH;
+  const byDay={};dispDays.forEach((d,i)=>byDay[i]=S.classes.filter(c=>c.day===d));
+  let h=`<div class="bar"><button class="primary" data-act="cnew"><i data-ic="plus"></i> Add class</button><span class="sp"></span><small>Click a column to add a class at that time</small></div>`;
+  if(!S.classes.length)h+=`<div class="empty liquid-glass" data-lg>${ic('circle-check')}No classes yet<br>Click <b>Add class</b> to get started.</div>`;
+  else{
+    h+=`<div class="weekwrap"><div class="week" data-lg>`;
+    h+=`<div class="weekcorner"></div>`;
+    dispDays.forEach((d,i)=>h+=`<div class="weekhead" style="grid-column:${i+2}"><b>${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]}</b><small>${dates[i].toLocaleDateString(undefined,{month:'short',day:'numeric'})}</small></div>`);
+    for(let i=0;i<nH;i++)h+=`<div class="weektime" style="grid-row:${i+2}"><span>${minH+i}</span></div>`;
+    dispDays.forEach((d,i)=>{
+      h+=`<div class="weekcal" style="grid-column:${i+2};grid-row:2/${nH+2}" data-day="${d}">`;
+      for(let j=0;j<nH;j++)h+=`<div class="weekhr" style="top:${j*H}px;height:${H}px"></div>`;
+      byDay[i].forEach(c=>{
+        const [sh,sm]=c.start.split(':').map(Number),[eh,em]=c.end.split(':').map(Number);
+        const top=(sh+sm/60-minH)*H,height=Math.max(18,(eh+em/60-sh-sm/60)*H);
+        const co=course(c.course);
+        h+=`<div class="weekblock" style="--c:${co?.color||'var(--text3)'};top:${top}px;height:${height}px" data-act="cedit" data-id="${c.id}" title="${esc(c.title||co?.name||'Class')}">
+          <b>${esc(c.title||co?.name||'Class')}</b>
+          <div class="weekblock-meta"><span>${c.start}–${c.end}</span>${c.room?`<span>· ${esc(c.room)}</span>`:''}</div>
+        </div>`;
+      });
+      h+=`</div>`;
+    });
+    h+=`</div></div>`;
+  }
+  return h;
+}
 function render(){
   theme();
-  $('#nav').innerHTML=[['list','List'],['cal','Calendar'],['stats','Stats'],['set','Settings']].map(([k,n])=>`<button class="${ui.view===k?'on':''}" data-act="view" data-v="${k}">${n}</button>`).join('');
+  $('#nav').innerHTML=[['list','List'],['week','Week'],['cal','Calendar'],['stats','Stats'],['set','Settings']].map(([k,n])=>`<button class="${ui.view===k?'on':''}" data-act="view" data-v="${k}">${n}</button>`).join('');
   const od=S.tasks.filter(t=>!t.done&&t.due&&diff(t.due)<0).length;$('#badge').innerHTML=od?`${ic('circle-alert')} ${od} overdue`:'';
-  const m=$('#main');m.innerHTML={list:listView,cal:calView,stats:statsView,set:setView}[ui.view]();
+  const m=$('#main');m.innerHTML={list:listView,week:weekView,cal:calView,stats:statsView,set:setView}[ui.view]();
   m.classList.toggle('enter',ui.anim);
-  if(ui.anim)m.querySelectorAll('.task,.card,.panel,.day,.empty,details').forEach((e,i)=>e.style.setProperty('--i',Math.min(i,14)));
+  if(ui.anim)m.querySelectorAll('.task,.card,.panel,.day,.empty,details,.weekblock').forEach((e,i)=>e.style.setProperty('--i',Math.min(i,14)));
   if(ui.pop)m.querySelector(`.task[data-id="${ui.pop}"]`)?.classList.add('pop');
   ui.anim=false;ui.pop=null;
   save();LG.sweep();
@@ -393,6 +465,7 @@ $('#f').onsubmit=e=>{
   if(!old)ui.pop=t.id;
   $('#dlg').close();render();
 };
+$('#cf').onsubmit=e=>{e.preventDefault();const f=e.target,old=S.classes.find(x=>x.id===ui.clEdit);const t={id:old?.id||uid(),title:f.title.value.trim(),course:f.course.value,day:+f.day.value,start:f.start.value,end:f.end.value,room:f.room.value.trim(),notes:f.notes.value.trim()};old?Object.assign(old,t):S.classes.push(t);$('#cdlg').close();render()};
 
 // ---- events
 // play the card's exit animation, then apply the change
@@ -404,6 +477,11 @@ document.addEventListener('click',e=>{
   const a=el.dataset.act,id=el.dataset.id||el.closest('[data-id]')?.dataset.id,t=S.tasks.find(x=>x.id===id);
   if(['view','cal','fc'].includes(a))ui.anim=true;
   if(a==='view'){ui.view=el.dataset.v}
+  else if(a==='cnew')return openClass();
+  else if(a==='cedit')return openClass(S.classes.find(x=>x.id===id));
+  else if(a==='ccancel')return $('#cdlg').close();
+  else if(a==='cdel'){if(!confirm('Delete this class?'))return;S.classes=S.classes.filter(x=>x.id!==id);$('#cdlg').close();render()}
+  else if(a==='weekcal'){const r=el.getBoundingClientRect();const frac=(e.clientY-r.top)/r.height;const hour=7+Math.floor(frac*14);openClass({day:+el.dataset.day,start:String(hour).padStart(2,'0')+':00',end:String(hour+1).padStart(2,'0')+':00',room:'',notes:'',course:S.courses[0]?.id||''})}
   else if(a==='new')return openEdit();
   else if(a==='cancel')return $('#dlg').close();
   else if(a==='edit')return openEdit(id);
