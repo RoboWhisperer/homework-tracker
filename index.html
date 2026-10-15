@@ -265,12 +265,16 @@ const LG=(()=>{
   }
   const release=k=>{const e=k&&filters.get(k);if(e)e.refs--};
   function rebuild(el){
-    const w=Math.round(el.offsetWidth),h=Math.round(el.offsetHeight);if(w<2||h<2)return;
+    const w=Math.round(el.offsetWidth),h=Math.round(el.offsetHeight);
+    if(w<2||h<2){el.style.backdropFilter='';return}
     const rv=getComputedStyle(el).borderTopLeftRadius,r=Math.min((parseFloat(rv)||0)*(rv.endsWith('%')?Math.min(w,h)/100:1),Math.min(w,h)/2);
     const key=[w,h,r,innerWidth,innerHeight].join('|');if(tracked.get(el)===key)return;
-    release(tracked.get(el));const e=acquire(key,w,h,r,innerWidth,innerHeight);tracked.set(el,key);el.style.backdropFilter=`url(#${e.id})`;
+    release(tracked.get(el));
+    try{const e=acquire(key,w,h,r,innerWidth,innerHeight);tracked.set(el,key);el.style.backdropFilter=`url(#${e.id})`}
+    catch(err){tracked.set(el,null);el.style.backdropFilter=''} // never let a failed bake crash the renderer
   }
-  const ro=new ResizeObserver(es=>es.forEach(e=>rebuild(e.target)));
+  let rob;
+  const ro=new ResizeObserver(es=>{clearTimeout(rob);rob=setTimeout(()=>es.forEach(e=>rebuild(e.target)),180)}); // coalesce rapid resize/layout fires
   addEventListener('resize',()=>{clearTimeout(deb);deb=setTimeout(()=>tracked.forEach((_,el)=>rebuild(el)),180)},{passive:true});
   // call after every render: tracks new [data-lg] nodes, releases removed ones
   return{sweep(){
