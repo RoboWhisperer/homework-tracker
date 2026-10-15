@@ -403,6 +403,7 @@ function openClass(c){
   $('#cdays').innerHTML=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((n,i)=>`<option value="${i}" ${t.day===i?'selected':''}>${n}</option>`).join('');
   for(const k of ['title','course','start','end','room','notes'])f[k].value=t[k]??'';
   $('#cdel').style.display=c?'inline-flex':'none';
+  $('#cdel').dataset.id=c?.id||'';
   $('#cdlg').showModal();f.title.focus();
 }
 function weekView(){
@@ -480,7 +481,7 @@ document.addEventListener('click',e=>{
   else if(a==='cnew')return openClass();
   else if(a==='cedit')return openClass(S.classes.find(x=>x.id===id));
   else if(a==='ccancel')return $('#cdlg').close();
-  else if(a==='cdel'){if(!confirm('Delete this class?'))return;S.classes=S.classes.filter(x=>x.id!==id);$('#cdlg').close();render()}
+  else if(a==='cdel'){if(!confirm('Delete this class?'))return;const cid=el.dataset.id||ui.clEdit;S.classes=S.classes.filter(x=>x.id!==cid);$('#cdlg').close();render()}
   else if(a==='weekcal'){const r=el.getBoundingClientRect();const frac=(e.clientY-r.top)/r.height;const hour=7+Math.floor(frac*14);openClass({day:+el.dataset.day,start:String(hour).padStart(2,'0')+':00',end:String(hour+1).padStart(2,'0')+':00',room:'',notes:'',course:S.courses[0]?.id||''})}
   else if(a==='new')return openEdit();
   else if(a==='cancel')return $('#dlg').close();
